@@ -1,0 +1,12 @@
+pgvector
+psycopg2-binary
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+pgvector
+pydantic-settings
+alembic
+python-dotenv
+psycopg2-binary
+pandas

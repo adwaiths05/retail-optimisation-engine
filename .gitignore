@@ -1,0 +1,30 @@
+# --- Environment & Credentials ---
+.env
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# --- Data & Large Files ---
+# Do not track the 32M row raw data or processed CSVs
+data/raw/
+data/processed/
+*.csv
+*.parquet
+
+# --- ML Models & Artifacts ---
+# Models are often too large for Git; use DVC or a Model Registry instead
+models/*.pth
+models/*.onnx
+models/*.pkl
+mlruns/
+.dvc/
+
+# --- IDE & System ---
+.vscode/
+.idea/
+.DS_Store
+*.log
+
+# OS
+.DS_Store
