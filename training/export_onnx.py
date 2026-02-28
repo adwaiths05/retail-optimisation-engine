@@ -5,8 +5,8 @@ import os
 
 def export():
     # 1. Initialize model with your verified dimensions
-    num_users = 206210 + 1 
-    num_products = 49688 + 1
+    num_users = 206210
+    num_products = 49688
     model = TwoTowerModel(num_users, num_products)
     
     # 2. Load trained weights

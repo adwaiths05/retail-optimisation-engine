@@ -1,12 +1,26 @@
-pgvector
-psycopg2-binary
+# --- Web & API ---
 fastapi
 uvicorn[standard]
+pydantic-settings
+python-dotenv
+
+# --- Database & Vector Search ---
 sqlalchemy[asyncio]
 asyncpg
 pgvector
-pydantic-settings
-alembic
-python-dotenv
 psycopg2-binary
+alembic
+
+# --- Cache & Session Management (Step 10) ---
+redis
+
+# --- Machine Learning & Inference (Step 6 & 10) ---
+#torch --index-url https://download.pytorch.org/whl/cpu
+#sentence-transformers
+onnxruntime
+onnx
+numpy
 pandas
+
+# --- Monitoring & Utilities ---
+httpx
