@@ -1,30 +1,61 @@
 # --- Environment & Credentials ---
 .env
 venv/
+env/
+.venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .ipynb_checkpoints/
 
 # --- Data & Large Files ---
-# Do not track the 32M row raw data or processed CSVs
 data/raw/
 data/processed/
 *.csv
 *.parquet
+*.sqlite
+*.db
 
 # --- ML Models & Artifacts ---
-# Models are often too large for Git; use DVC or a Model Registry instead
+# We ignore the heavy weights, but keep the folder structure
 models/*.pth
 models/*.onnx
 models/*.pkl
+models/*.joblib
 mlruns/
 .dvc/
 
-# --- IDE & System ---
+# --- Docker & DevOps ---
+.dockerignore
+# Ignore local docker volumes if they are created in-project
+docker_data/
+# Ignore credentials or local-only docker compose overrides
+docker-compose.override.yml
+
+# --- Redis & Infrastructure ---
+*.rdb
+*.aof
+dump.rdb
+appendonly.aof
+*.pid
+
+# --- Database Migrations (Alembic) ---
+# We want to keep the versions/ scripts, but ignore local config caches
+alembic/cache/
+*.pyo
+
+# --- IDE, System & Monitoring ---
 .vscode/
 .idea/
 .DS_Store
 *.log
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
 
-# OS
-.DS_Store
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini

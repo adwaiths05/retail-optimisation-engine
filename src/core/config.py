@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     # Database
     # Neon provides a connection string; we'll force it to use asyncpg
     DATABASE_URL: str = Field(..., alias="DATABASE_URL")
+    REDIS_URL: str = "redis://localhost:6379/0"
     
     # Model Config
     MODEL_PATH: str = "models/two_tower.onnx"
