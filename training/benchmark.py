@@ -8,7 +8,7 @@ from training.model import TwoTowerModel #
 def benchmark():
     # --- 1. SETUP & CONFIG ---
     model_path_pth = "models/two_tower_best.pth" #
-    model_path_onnx = "models/user_tower.onnx"   #
+    model_path_onnx = "models/user_tower_quantized.onnx"   #
     num_users = 206210 
     num_products = 49688 
     iterations = 1000  # Number of runs for a stable average

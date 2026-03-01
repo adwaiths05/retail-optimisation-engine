@@ -55,6 +55,24 @@ alembic/cache/
 .coverage
 htmlcov/
 
+# --- Streamlit Specific ---
+.streamlit/config.toml
+.streamlit/secrets.toml
+# Ignore the local streamlit component and static file caches
+node_modules/
+.streamlit/static/
+
+# --- Extra Python / Auth Security ---
+# In case you generate keys locally for testing
+*.pem
+*.key
+*.pub
+
+# --- Frontend Metadata ---
+.parcel-cache/
+dist/
+build/
+
 # OS specific
 Thumbs.db
 ehthumbs.db
