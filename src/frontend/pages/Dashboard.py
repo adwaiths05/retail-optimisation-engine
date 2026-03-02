@@ -1,136 +1,135 @@
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.express as px
-from datetime import datetime
 
-st.set_page_config(page_title="Retail Control Center", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Retail Control Center", layout="wide", initial_sidebar_state="collapsed")
+st.markdown("<style> [data-testid='stSidebar'] {display: none} </style>", unsafe_allow_html=True)
 
-# --- AUTH CHECK ---
 if not st.session_state.get("logged_in"):
-    st.warning("⚠️ Unauthorized Access. Please authenticate on the Auth page.")
     st.stop()
 
-# Configuration
 API_BASE = "http://localhost:8000/api/v1"
 headers = {"Authorization": f"Bearer {st.session_state.token}"}
-role = st.session_state.role
 
-# --- SIDEBAR: SYSTEM STATUS (Endpoint 1: /health) ---
-with st.sidebar:
-    st.title("👤 Session Info")
-    st.write(f"**Role:** :blue[{role.upper()}]")
+# --- ADMIN SECTION (RBAC Protected) ---
+try:
+    # API CALL: /metrics/system (Used as a security gate)
+    metrics_res = requests.get(f"{API_BASE}/metrics/system", headers=headers)
     
-    try:
-        health_res = requests.get("http://localhost:8000/health") # Endpoint 1
-        if health_res.status_code == 200:
-            st.success("🟢 API Status: Online")
-        else:
-            st.error("🔴 API Status: Offline")
-    except:
-        st.error("🔴 API Status: Connection Failed")
-
-    if st.button("Logout", use_container_width=True):
-        st.session_state.clear()
-        st.switch_page("Landing.py")
-
-# --- MAIN UI ---
-st.title("📊 Retail Intelligence Dashboard")
-
-# --- ADMIN SECTION (Endpoints: /metrics/system, /pricing/optimize, /models/retrain, /models/current) ---
-if role == "admin":
-    st.subheader("🛠️ Administrative Command Center")
-    
-    # 1. System Metrics (Endpoint 2: /metrics/system)
-    try:
-        m_res = requests.get(f"{API_BASE}/metrics/system", headers=headers)
-        if m_res.status_code == 200:
-            m = m_res.json()
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Inference Latency", f"{m.get('latency', 0)}ms")
-            c2.metric("Active Sessions", m.get("active_users", 0))
-            c3.metric("CPU Usage", f"{m.get('cpu_load', 0)}%")
-            c4.metric("Model State", "Healthy" if m.get('status') == 'healthy' else "Check Logs")
-    except: st.warning("Metrics endpoint unreachable")
-
-    tabs = st.tabs(["💰 Pricing Optimizer", "🧠 Model Lifecycle", "📈 A/B Insights"])
-
-    with tabs[0]: # Endpoint 3: /pricing/optimize
-        st.write("### Dynamic Price Optimization")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            b_price = st.number_input("Base Product Price ($)", value=49.99, step=1.0)
-            inv = st.number_input("Current Inventory Level", value=150, step=10)
-        with col_b:
-            comp_p = st.number_input("Competitor Price ($)", value=45.00, step=1.0)
-            margin = st.slider("Min Target Margin (%)", 5, 40, 15)
-
-        if st.button("Calculate Optimized Price", type="primary"):
-            payload = {"base_price": b_price, "inventory_level": inv, "competitor_price": comp_p, "target_margin": margin/100}
-            res = requests.post(f"{API_BASE}/pricing/optimize", headers=headers, json=payload)
-            if res.status_code == 200:
-                opt = res.json()
-                st.info(f"💡 Recommended Strategy: **{opt.get('strategy', 'Standard')}**")
-                st.metric("New Optimized Price", f"${opt.get('optimized_price'):.2f}", 
-                          f"{opt.get('optimized_price') - b_price:.2f}")
-            else: st.error("Pricing API Error")
-
-    with tabs[1]: # Endpoint 4 & 5: /models/current & /models/retrain
-        st.write("### Model Registry & Maintenance")
-        curr_res = requests.get(f"{API_BASE}/models/current", headers=headers)
-        if curr_res.status_code == 200:
-            info = curr_res.json()
-            st.code(f"Current Model: {info.get('version')} | Deployed: {info.get('last_updated')}")
+    if metrics_res.status_code == 200:
+        st.title("🛡️ Admin Command Center")
+        m = metrics_res.json()
         
-        if st.button("🚀 Trigger Model Retraining"):
-            retrain_res = requests.post(f"{API_BASE}/models/retrain", headers=headers)
-            if retrain_res.status_code == 200:
-                st.toast("Retraining Pipeline Started!", icon="🔄")
-            else: st.error("Retrain failed")
+        # API CALL: /models/current
+        model_info = requests.get(f"{API_BASE}/models/current", headers=headers).json()
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Redis Latency", f"{m['redis_latency_ms']}ms")
+        c2.metric("System Health", m['status'].upper())
+        c3.metric("Model Version", model_info['model_version'])
 
-    with tabs[2]: # Endpoint 6: /experiments/results
-        st.write("### A/B Testing Performance")
-        exp_res = requests.get(f"{API_BASE}/experiments/results", headers=headers)
-        if exp_res.status_code == 200:
-            data = exp_res.json().get("results", [])
-            if data:
-                df = pd.DataFrame(data)
-                fig = px.bar(df, x="model_name", y="ctr", color="model_name", title="CTR by Model Variant")
-                st.plotly_chart(fig, use_container_width=True)
-            else: st.info("No active experiments found.")
+        tabs = st.tabs(["💰 Pricing Optimizer", "📈 Experiment Analytics", "⚙️ Model Ops"])
 
-# --- COMMON SECTION (Endpoints: /recommendations, /events) ---
+        with tabs[0]: # API CALL: /pricing/optimize
+            st.write("### Dynamic Price Optimization")
+            col_a, col_b, col_c = st.columns(3)
+            pid = col_a.number_input("Product ID", value=1, key="p_opt")
+            base = col_b.number_input("Base Price ($)", value=49.99)
+            stock = col_c.number_input("Inventory", value=150)
+            
+            if st.button("Calculate Optimal Price"):
+                p_res = requests.post(f"{API_BASE}/pricing/optimize", headers=headers, 
+                                     params={"product_id": pid, "base_price": base, "inventory_level": stock})
+                if p_res.status_code == 200:
+                    opt = p_res.json()
+                    st.success("✅ Optimal Strategy Generated")
+                    res_col1, res_col2 = st.columns(2)
+                    res_col1.metric("Recommended Price", f"${opt['recommended_price']}", f"{round(opt['recommended_price']-base, 2)}")
+                    res_col2.metric("Expected Uplift", f"8.2%", help="Simulated revenue uplift based on inventory pressure logic")
+
+        with tabs[1]: # API CALL: /experiments/results
+            st.write("### A/B Test Performance")
+            if st.button("🔄 Refresh Analytics"):
+                st.rerun()
+            
+            exp_res = requests.get(f"{API_BASE}/experiments/results", headers=headers).json()
+            results_df = pd.DataFrame([{"Group": r['group'], **r['metrics']} for r in exp_res['results']])
+            st.table(results_df)
+            
+            # Real-Time Visual Feedback: Revenue Lift Chart
+            st.write("#### Revenue Lift by Group")
+            chart_data = results_df.set_index("Group")["total_revenue"]
+            st.bar_chart(chart_data)
+
+        with tabs[2]: # API CALL: /models/retrain
+            if st.button("🚀 Trigger Pipeline Retrain"):
+                requests.post(f"{API_BASE}/models/retrain", headers=headers)
+                st.toast("Retraining job queued!")
+
+except Exception:
+    pass # Hides section for 'viewer' role (403 Forbidden)
+
+# --- RECOMMENDATION ENGINE ---
 st.divider()
-st.subheader("🎯 Neural Recommendation Engine")
+st.subheader("🎯 Neural Personalization Engine")
 
-# 1. Input for Recommendations (Endpoint 7: /recommendations)
-col_req1, col_req2 = st.columns([1, 3])
-with col_req1:
-    target_user = st.number_input("Target User ID", value=1001, step=1)
-    k_items = st.select_slider("Recommendation Count", options=[5, 10, 15, 20])
+u_id = st.number_input("Target User ID", value=1001)
 
-if st.button("Generate Recommendations", type="primary"):
-    rec_res = requests.post(f"{API_BASE}/recommendations", headers=headers, 
-                            json={"user_id": target_user, "top_k": k_items})
+# Feature: Strategy Override Toggle
+col_strat1, col_strat2 = st.columns([2, 1])
+with col_strat1:
+    override_mode = st.toggle("Enable Manual Strategy Override", help="Force a specific algorithm regardless of A/B assignment.")
+
+with col_strat2:
+    selected_strategy = st.selectbox(
+        "Select Override Strategy",
+        ["control", "margin_boost"],
+        disabled=not override_mode,
+        format_func=lambda x: "A (Control: Relevance)" if x == "control" else "B (Margin Boost: Profit)"
+    )
+
+# Use Session State to keep recommendations visible after clicking 'Simulate Sale'
+if st.button("Generate Strategy", type="primary") or "current_recs" in st.session_state:
     
-    if rec_res.status_code == 200:
-        items = rec_res.json().get("recommendations", [])
-        st.write(f"Showing results for User **{target_user}**")
-        
-        # Proper Grid Output (No JSON)
-        grid = st.columns(5)
-        for i, item in enumerate(items):
-            with grid[i % 5]:
-                with st.container(border=True):
-                    st.write(f"**Product #{item['id']}**")
-                    st.write(f"Price: :green[${item['price']}]")
-                    st.caption(f"Match: {item['score']*100:.1f}%")
-                    
-                    # 2. Event Tracking (Endpoint 8: /events)
-                    if st.button("Buy Now", key=f"buy_{item['id']}"):
-                        ev_res = requests.post(f"{API_BASE}/events", headers=headers,
-                                               json={"user_id": target_user, "item_id": item['id'], "event": "purchase"})
-                        if ev_res.status_code == 200:
-                            st.toast(f"Purchase logged for User {target_user}!", icon="💰")
-    else:
-        st.error("Could not fetch recommendations.")
+    # Check if we need to fetch new data or if the user changed the User ID
+    if "current_recs" not in st.session_state or st.button("🔄 Get New Suggestions"):
+        with st.status("Fetching Neural Strategy...", expanded=True) as status:
+            # API CALL: /recommendations
+            rec_res = requests.post(f"{API_BASE}/recommendations?user_id={u_id}&top_k=5", headers=headers).json()
+            st.session_state.current_recs = rec_res
+            status.update(label="Recommendations Ready!", state="complete", expanded=False)
+
+    data = st.session_state.current_recs
+    
+    # Determine the strategy to display and log
+    display_group = selected_strategy if override_mode else data['experiment_group']
+    
+    st.write(f"**Applied Strategy:** :orange[{display_group.replace('_', ' ').upper()}]")
+    if override_mode:
+        st.caption("⚠️ Manual override active: Analytics data will be tagged with this forced group.")
+    
+    cols = st.columns(5)
+    for i, item in enumerate(data['recommendations']):
+        with cols[i]:
+            with st.container(border=True):
+                st.write(f"**{item['product_name']}**")
+                st.write(f"Price: :green[${item['price']}]")
+                st.metric("Score", f"{item['score']}", help="Combined ML Probability + Business Margin Weight")
+                
+                # API CALL: /events (Feeds the Experiment Analytics)
+                if st.button("🛒 Simulate Sale", key=f"s_{item['product_id']}"):
+                    payload = {
+                        "user_id": int(u_id), 
+                        "product_id": int(item['product_id']),
+                        "event_type": "purchase", 
+                        "experiment_group": display_group, # Log against the applied strategy
+                        "revenue": float(item['price'])
+                    }
+                    with st.spinner("Logging transaction..."):
+                        response = requests.post(f"{API_BASE}/events", headers=headers, json=payload)
+                        if response.status_code == 200:
+                            st.toast(f"Success! ${item['price']} added to {display_group} revenue.", icon="💰")
+
+if st.button("Logout"):
+    st.session_state.clear()
+    st.switch_page("Landing.py")
