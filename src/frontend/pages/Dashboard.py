@@ -73,7 +73,7 @@ if st.button("Generate Strategy", type="primary") or "current_recs" in st.sessio
                     payload = {"user_id": int(u_id), "product_id": int(item['product_id']), 
                                "event_type": "purchase", "experiment_group": display_group, "revenue": float(item['price'])}
                     authenticated_request("POST", "events", json=payload)
-                    st.toast("Success!")
+                    st.toast(f"Event Captured! Revenue of ${item['price']} attributed to {display_group} group.")
 
 if st.button("Logout"):
     st.session_state.clear()
