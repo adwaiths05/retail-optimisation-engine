@@ -23,6 +23,10 @@ numpy
 pandas
 xgboost
 joblib
+mlflow
+great-expectations
+prometheus-fastapi-instrumentator
+evidently
 
 # --- Authentication ---
 python-jose[cryptography]

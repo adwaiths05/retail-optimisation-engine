@@ -6,7 +6,8 @@ from src.api.routes import (
 from src.api.middleware.logging import LatencyLoggingMiddleware
 from src.api.middleware.errors import GlobalExceptionHandlerMiddleware
 from src.api.middleware.security import add_security_headers, rate_limiter
-from src.api.middleware.auth import get_current_user, role_required # Added JWT dependency
+from src.api.middleware.auth import get_current_user, role_required 
+from src.api.middleware.monitoring import setup_monitoring
 from src.core.config import settings
 
 app = FastAPI(
@@ -14,6 +15,8 @@ app = FastAPI(
     description="Business-aware, margin-optimized recommendation API",
     version="1.0.0"
 )
+
+setup_monitoring(app)
 
 # 1. Security Layer (CORS & Headers)
 add_security_headers(app)

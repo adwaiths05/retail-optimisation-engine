@@ -1,15 +1,11 @@
 from fastapi import APIRouter
+from mlops.model_registry import get_current_metadata
 
 router = APIRouter()
 
 @router.get("/current")
 async def get_current_model():
-    return {
-        "model_version": "v1.2.0",
-        "type": "two_tower_onnx",
-        "trained_at": "2026-02-20",
-        "auc": 0.83
-    }
+    return get_current_metadata()
 
 @router.post("/retrain")
 async def trigger_retrain():
