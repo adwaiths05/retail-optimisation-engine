@@ -3,6 +3,7 @@ fastapi
 uvicorn[standard]
 pydantic-settings
 python-dotenv
+python-multipart
 
 # --- Database & Vector Search ---
 sqlalchemy[asyncio]
@@ -11,16 +12,22 @@ pgvector
 psycopg2-binary
 alembic
 
-# --- Cache & Session Management (Step 10) ---
+# --- Cache & Session Management ---
 redis
 
-# --- Machine Learning & Inference (Step 6 & 10) ---
-#torch --index-url https://download.pytorch.org/whl/cpu
-#sentence-transformers
+# --- Machine Learning & Inference ---
+torch --index-url https://download.pytorch.org/whl/cpu
 onnxruntime
 onnx
 numpy
 pandas
+xgboost
+joblib
+
+# --- Authentication ---
+python-jose[cryptography]
+passlib[bcrypt]
 
 # --- Monitoring & Utilities ---
 httpx
+psutil

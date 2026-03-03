@@ -1,5 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+import os
+from pathlib import Path
+
+# Get the absolute path of the project root
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
     # --- Database ---
@@ -7,9 +12,9 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # --- Model Config ---
-    MODEL_PATH: str = "models/user_tower.onnx"
-    RERANKER_PATH: str = "models/reranker_xgb.pkl"
-    MAPPINGS_PATH: str = "models/mappings.pkl"
+    MODEL_PATH = str(BASE_DIR / "models" / "user_tower_quant.onnx")
+    RERANKER_PATH = str(BASE_DIR / "models" / "reranker_xgb.pkl")
+    MAPPINGS_PATH = str(BASE_DIR / "models" / "mappings.pkl")
     EMBEDDING_DIM: int = 64
     
     # --- JWT Authentication Config ---

@@ -65,7 +65,6 @@ def evaluate():
     print(f"Recall@10:    {np.mean(recalls):.4f}")
     print(f"NDCG@10:      {np.mean(ndcgs):.4f}")
     print("="*35)
-    print("💡 NOTE: These represent a strong baseline to beat.")
 
 if __name__ == "__main__":
     evaluate()

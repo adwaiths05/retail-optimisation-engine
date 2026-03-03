@@ -1,31 +1,37 @@
-# Use a slim Python 3.11 image
+# Use a slim Python 3.11 image for a smaller footprint
 FROM python:3.11-slim
 
-# Set working directory to /app
+# Set environment variables for better Python logging
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies for ONNX and Postgres
-RUN apt-get update && apt-get install -y \
+# Install system dependencies for ONNX, Postgres, and compilation
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libpq-dev \
     gcc \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements from root (Docker context will be root)
+# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire project into the container
+# Copy the entire project
 COPY . .
 
-# Ensure the models directory exists for the ONNX file
-RUN mkdir -p models
+# Ensure models and logs directories exist
+RUN mkdir -p /app/models /app/logs
 
-# Set Python path to find the 'src' and 'api' modules
-ENV PYTHONPATH=/app
+# Make the startup script executable
+RUN chmod +x /app/deployments/start.sh
 
-# Expose FastAPI port
+# Expose the API port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Execute through the startup script
+CMD ["/bin/bash", "/app/deployments/start.sh"]

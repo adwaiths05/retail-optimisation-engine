@@ -1,8 +1,32 @@
-venv/
+# Version Control
+.git
+.gitignore
+
+# Environment and Secrets
 .env
+.env.*
+.venv
+venv
+env
+
+# Python artifacts
 __pycache__/
-*.pyc
-.git/
-.github/
-training/data/
-*.pth
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+
+# Local data and notebooks (already indexed in DB)
+data/raw/
+data/processed/
+notebooks/
+
+# Docker related
+deployments/Dockerfile
+deployments/docker-compose.yml
+.dockerignore
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
