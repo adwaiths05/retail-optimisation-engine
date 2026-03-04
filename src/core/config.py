@@ -9,6 +9,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class Settings(BaseSettings):
     # --- Database ---
     DATABASE_URL: str = Field(..., alias="DATABASE_URL")
+    METADATA_PATH: str = str(BASE_DIR / "models" / "metadata.json")
+    @property
+    def SYNC_DATABASE_URL(self) -> str:
+        return self.DATABASE_URL.replace("postgres://", "postgresql://")
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # --- Model Config ---
