@@ -3,13 +3,13 @@ version: '3.8'
 services:
   api:
     build:
-      context: ..
+      context: .
       dockerfile: deployments/Dockerfile
     container_name: retail_api
     ports:
       - "8000:8000"
     env_file:
-      - ../.env
+      - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
       # Ensure DATABASE_URL is in your local .env file

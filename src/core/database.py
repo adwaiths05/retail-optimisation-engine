@@ -4,8 +4,12 @@ from src.core.config import settings
 
 # 1. Programmatically create the Async URL for the API
 # This keeps the original settings.DATABASE_URL untouched for training scripts
-raw_url = settings.DATABASE_URL.replace("postgres://", "postgresql://")
-ASYNC_DATABASE_URL = raw_url.replace("postgresql://", "postgresql+asyncpg://")
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+ASYNC_DATABASE_URL = db_url
 
 # 2. Create the Async Engine
 engine = create_async_engine(
