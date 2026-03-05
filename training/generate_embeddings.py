@@ -31,7 +31,10 @@ def generate_and_upload():
         embeddings = embeddings.cpu().numpy()
 
     # Synchronous engine for bulk updates
-    engine = create_engine(settings.SYNC_DATABASE_URL, connect_args={'connect_timeout': 60})
+    engine = create_engine(
+    settings.SYNC_DATABASE_URL, 
+    connect_args={'connect_timeout': 60, 'sslmode': 'require'}
+)
     print(f"📡 Connecting to database to update {len(products_df)} products...")
 
     batch_size = 2000 

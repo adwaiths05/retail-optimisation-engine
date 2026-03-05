@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # --- Model Config ---
-    MODEL_PATH: str = str(BASE_DIR / "models" / "user_tower_quantized.onnx")
+    MODEL_PATH: str = str(BASE_DIR / "models" / "user_tower_production.onnx")
     RERANKER_PATH: str = str(BASE_DIR / "models" / "reranker_xgb.pkl")
     MAPPINGS_PATH: str = str(BASE_DIR / "models" / "mappings.pkl")
     EMBEDDING_DIM: int = 64

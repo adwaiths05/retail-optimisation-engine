@@ -11,7 +11,10 @@ from src.database.models import Product, Aisle, Department
 
 def seed_all():
     # Use the synchronous DATABASE_URL
-    engine = create_engine(settings.SYNC_DATABASE_URL)
+    engine = create_engine(
+    settings.SYNC_DATABASE_URL, 
+    connect_args={'sslmode': 'require'}
+)
     
     path = "./data/raw/"
     df_products = pd.read_csv(f"{path}products.csv")

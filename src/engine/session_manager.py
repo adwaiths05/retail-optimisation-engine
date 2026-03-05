@@ -45,5 +45,5 @@ class SessionManager:
     def get_ranking_weights(self, group: str):
         """Returns weights based on the A/B group."""
         if group == "margin_boost":
-            return {"w_relevance": 0.5, "w_margin": 0.4, "w_inventory": 0.1}
+            return {"w_relevance": 0.6, "w_margin": 0.3, "w_inventory": 0.1}
         return {"w_relevance": 0.8, "w_margin": 0.1, "w_inventory": 0.1}
