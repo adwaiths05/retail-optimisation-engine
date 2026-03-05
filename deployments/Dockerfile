@@ -1,49 +1,64 @@
-# Use a slim Python 3.11 image for a smaller footprint
-FROM python:3.11-slim
+# ---------- STAGE 1: Builder ----------
+    FROM python:3.11-slim AS builder
 
-# Set environment variables for better Python logging
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
-
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies for ONNX, Postgres (psycopg2), and compilation
-# libgomp1 is required for ONNX/XGBoost inference
-# libpq-dev, gcc, and python3-dev are required for building psycopg2-binary in some environments
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 \
-    libpq-dev \
-    gcc \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install dependencies
-COPY requirements.txt .
-
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
-
-# Copy the entire project
-# IMPORTANT: Ensure your .dockerignore does NOT exclude the 'models' folder 
-# so that user_tower_production.onnx, reranker_xgb.pkl, and mappings.pkl are copied.
-COPY . .
-
-# Ensure models and logs directories exist
-# We also create a symlink if necessary to ensure the API always finds 
-# 'user_tower_production.onnx' regardless of the training script's naming.
-RUN mkdir -p /app/models /app/logs && \
-    if [ -f /app/models/user_tower_quantized.onnx ] && [ ! -f /app/models/user_tower_production.onnx ]; then \
-        ln -s /app/models/user_tower_quantized.onnx /app/models/user_tower_production.onnx; \
-    fi
-
-# Make the startup script executable
-RUN chmod +x /app/deployments/start.sh
-
-# Expose the API port (Render uses $PORT, but we expose 8000 as a default)
-EXPOSE 8000
-
-# Execute through the startup script
-# The start.sh should be updated to use --workers 1 to avoid OOM on Render.
-CMD ["/bin/bash", "/app/deployments/start.sh"]
+    WORKDIR /app
+    
+    # Install build dependencies
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc \
+        python3-dev \
+        libpq-dev \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # Copy lean requirements
+    COPY requirements-prod.txt .
+    
+    # Install Python dependencies to user directory
+    RUN pip install --upgrade pip && \
+        pip install --user --no-cache-dir -r requirements-prod.txt
+    
+    # Aggressive cleanup of standard library bloat
+    RUN find /root/.local/lib/python3.11/site-packages -name "tests" -type d -exec rm -rf {} + && \
+        find /root/.local/lib/python3.11/site-packages -name "__pycache__" -type d -exec rm -rf {} + && \
+        find /root/.local/lib/python3.11/site-packages -name "*.pyc" -delete
+    
+    # ---------- STAGE 2: Runtime ----------
+    FROM python:3.11-slim
+    
+    WORKDIR /app
+    
+    # Runtime system dependencies only (libgomp1 is still needed for ONNX)
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgomp1 \
+        libpq5 \
+        && rm -rf /var/lib/apt/lists/*
+    
+    # Copy installed packages from builder
+    COPY --from=builder /root/.local /root/.local
+    
+    # Environment variables
+    ENV PATH=/root/.local/bin:$PATH
+    ENV PYTHONPATH=/app
+    ENV PYTHONDONTWRITEBYTECODE=1
+    ENV PYTHONUNBUFFERED=1
+    
+    # Copy only required project files
+    COPY src/ ./src/
+    COPY models/user_tower_production.onnx ./models/
+    # FIX: Copy the new ONNX model instead of the .pkl
+    COPY models/reranker.onnx ./models/ 
+    COPY models/mappings.pkl ./models/
+    COPY deployments/start.sh ./deployments/
+    COPY alembic/ ./alembic/
+    COPY alembic.ini .
+    
+    # Create necessary directories
+    RUN mkdir -p /app/logs /app/models
+    
+    # Make startup script executable
+    RUN chmod +x /app/deployments/start.sh
+    
+    EXPOSE 8000
+    
+    # Start the application
+    CMD ["/bin/bash", "/app/deployments/start.sh"]

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     
     # --- Model Config ---
     MODEL_PATH: str = str(BASE_DIR / "models" / "user_tower_production.onnx")
-    RERANKER_PATH: str = str(BASE_DIR / "models" / "reranker_xgb.pkl")
+    RERANKER_PATH: str = str(BASE_DIR / "models" / "reranker.onnx")
     MAPPINGS_PATH: str = str(BASE_DIR / "models" / "mappings.pkl")
     EMBEDDING_DIM: int = 64
     
