@@ -1,10 +1,10 @@
-version: '3.8'
-
 services:
+  # Backend API Service
   api:
     build:
       context: .. 
-      dockerfile: deployments/Dockerfile
+      dockerfile: deployments/backend.Dockerfile
+    image: retail-engine:latest
     container_name: retail_api
     ports:
       - "8000:8000"
@@ -12,11 +12,30 @@ services:
       - ../.env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      # Ensure DATABASE_URL is in your local .env file
     depends_on:
       - redis
     restart: unless-stopped
+    volumes:
+      - reports_data:/app/mlops/reports
 
+  # Frontend Streamlit Service
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployments/frontend.Dockerfile
+    image: retail-frontend:latest
+    container_name: retail_frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://api:8000  # Points to the 'api' service above
+    depends_on:
+      - api
+    restart: unless-stopped
+    volumes:
+      - reports_data:/app/mlops/reports
+
+  # Cache Service
   redis:
     image: redis:7-alpine
     container_name: retail_cache
@@ -27,3 +46,6 @@ services:
 networks:
   default:
     name: retail_network
+
+volumes:
+  reports_data:

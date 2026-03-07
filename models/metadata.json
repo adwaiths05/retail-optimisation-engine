@@ -1,0 +1,15 @@
+{
+    "model_version": "v1.0.0-initial",
+    "last_updated": "2026-03-06T00:00:00",
+    "framework": "ONNX (Quantized)",
+    "performance": {
+        "auc": 0.85,
+        "mae_parity": 0.12,
+        "mean_latency_ms": 12.5,
+        "p99_latency_ms": 18.2
+    },
+    "artifacts": {
+        "onnx_model": "models/user_tower_production.onnx",
+        "registry_type": "mlflow-linked-registry"
+    }
+}

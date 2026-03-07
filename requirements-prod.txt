@@ -5,7 +5,7 @@ pydantic==2.12.5
 pydantic-settings==2.13.1
 python-dotenv==1.2.1
 python-multipart==0.0.9
-prometheus-fastapi-instrumentator==7.0.0
+prometheus-fastapi-instrumentator==7.1.0
 
 # --- Database & Vector ---
 sqlalchemy[asyncio]==2.0.47
@@ -17,7 +17,7 @@ alembic==1.18.4
 # --- Cache ---
 redis==7.2.1
 
-# --- ML Inference (Pure ONNX) ---
+# --- ML Inference & Observability ---
 onnxruntime==1.17.3
 numpy==1.26.4
 joblib==1.5.3
@@ -25,5 +25,5 @@ joblib==1.5.3
 # --- Auth & Utils ---
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
-httpx==0.27.0
-psutil==5.9.8
+httpx==0.28.1           # Updated for better async compatibility
+psutil==6.1.1           # Updated for 2026 system monitoring
