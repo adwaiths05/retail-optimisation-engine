@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     @property
     def SYNC_DATABASE_URL(self) -> str:
         return self.DATABASE_URL.replace("postgres://", "postgresql://")
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = Field("redis://localhost:6379/0", alias="REDIS_URL")
     
     # --- Model Config ---
     MODEL_PATH: str = str(BASE_DIR / "models" / "user_tower_production.onnx")

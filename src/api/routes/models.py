@@ -22,14 +22,17 @@ async def get_monitoring_data(db: AsyncSession = Depends(get_db)):
     Lean endpoint: Returns raw data as JSON. 
     Frontend will convert this to DataFrames for Drift analysis.
     """
-    # 1. Pull Reference Data (Training baseline)
-    ref_query = text("SELECT price, category_id, avg_margin FROM products LIMIT 2000")
+    # 1. Pull Reference Data (Training baseline) from products table
+    # Products table has: price, aisle_id, margin
+    ref_query = text("SELECT price, aisle_id, margin FROM products LIMIT 2000")
     
-    # 2. Pull Current Data (Live production features)
+    # 2. Pull Current Data (Live production features) from experiment_events table
+    # ExperimentEvent table has: revenue, margin, product_id, timestamp
+    # We alias 'revenue' as 'price' to keep the schema consistent for the frontend drift analysis.
     curr_query = text("""
-        SELECT price, category_id, margin as avg_margin 
+        SELECT revenue as price, product_id, margin 
         FROM experiment_events 
-        WHERE event_time > NOW() - INTERVAL '7 days'
+        WHERE timestamp > NOW() - INTERVAL '7 days'
         LIMIT 2000
     """)
     

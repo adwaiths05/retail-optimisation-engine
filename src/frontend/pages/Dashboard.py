@@ -96,7 +96,7 @@ try:
                 """)
                 
                 st.markdown("#### Input Features")
-                features = model_info.get('features', ['price', 'category_id', 'avg_margin'])
+                features = model_info.get('features', 'price', 'aisle_id', 'margin')
                 st.write(", ".join([f"`{f}`" for f in features]))
 
             with col_perf:
