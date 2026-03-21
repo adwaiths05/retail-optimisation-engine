@@ -5,7 +5,12 @@ from pathlib import Path
 
 METADATA_PATH = Path("models/metadata.json")
 
-def update_model_metadata(version: str, metrics: dict, model_path: str = "models/user_tower_quantized.onnx"):
+def update_model_metadata(
+    version: str,
+    metrics: dict,
+    model_path: str = "models/user_tower_quantized.onnx",
+    candidate_info: dict | None = None,
+):
     """
     Saves model performance stats to a JSON registry.
     This file is read by the FastAPI /models/current endpoint.
@@ -19,6 +24,10 @@ def update_model_metadata(version: str, metrics: dict, model_path: str = "models
             "mae_parity": metrics.get("mae", 0.0),
             "mean_latency_ms": metrics.get("onnx_mean_ms", 0.0),
             "p99_latency_ms": metrics.get("onnx_p99_ms", 0.0)
+        },
+        "promotion": {
+            "gate": "latency_and_parity",
+            "candidate": candidate_info or {},
         },
         "artifacts": {
             "onnx_model": model_path,

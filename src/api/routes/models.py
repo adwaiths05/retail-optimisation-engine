@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from src.core.database import get_db
 from mlops.model_registry import get_current_metadata
+import pandas as pd
 
 router = APIRouter()
 
@@ -19,28 +20,45 @@ async def trigger_retrain():
 @router.get("/monitoring-data")
 async def get_monitoring_data(db: AsyncSession = Depends(get_db)):
     """
-    Lean endpoint: Returns raw data as JSON. 
-    Frontend will convert this to DataFrames for Drift analysis.
+    Returns reference (training) and current (recent live events) windows
+    aligned for drift checks.
     """
-    # 1. Pull Reference Data (Training baseline) from products table
-    # Products table has: price, aisle_id, margin
-    ref_query = text("SELECT price, aisle_id, margin FROM products LIMIT 2000")
-    
-    # 2. Pull Current Data (Live production features) from experiment_events table
-    # ExperimentEvent table has: revenue, margin, product_id, timestamp
-    # We alias 'revenue' as 'price' to keep the schema consistent for the frontend drift analysis.
+    ref_df = pd.read_csv(
+        "./data/raw/order_products__prior.csv",
+        usecols=["product_id", "reordered", "add_to_cart_order"],
+    ).head(3000)
+    ref_df["event_value"] = 1.0
+    ref_df["event_hour"] = 12
+
     curr_query = text("""
-        SELECT revenue as price, product_id, margin 
-        FROM experiment_events 
+        SELECT
+            e.product_id,
+            CASE WHEN e.event_type = 'purchase' THEN 1 ELSE 0 END AS reordered,
+            CASE
+                WHEN e.event_type = 'view' THEN 1
+                WHEN e.event_type = 'click' THEN 2
+                WHEN e.event_type = 'cart_add' THEN 3
+                ELSE 4
+            END AS add_to_cart_order,
+            CASE
+                WHEN e.event_type = 'view' THEN 0.25
+                WHEN e.event_type = 'click' THEN 0.5
+                WHEN e.event_type = 'cart_add' THEN 0.75
+                ELSE 1.0
+            END AS event_value,
+            EXTRACT(HOUR FROM e.timestamp) AS event_hour
+        FROM experiment_events e
         WHERE timestamp > NOW() - INTERVAL '7 days'
-        LIMIT 2000
+        ORDER BY timestamp DESC
+        LIMIT 3000
     """)
     
-    ref_result = await db.execute(ref_query)
     curr_result = await db.execute(curr_query)
-    
-    # Convert SQLAlchemy rows to plain list of dicts for JSON serialization
+
+    current_rows = [dict(r) for r in curr_result.mappings().all()]
+    reference_rows = ref_df[["product_id", "reordered", "add_to_cart_order", "event_value", "event_hour"]]
+
     return {
-        "reference": [dict(r) for r in ref_result.mappings().all()],
-        "current": [dict(r) for r in curr_result.mappings().all()]
+        "reference": reference_rows.to_dict(orient="records"),
+        "current": current_rows,
     }

@@ -96,7 +96,7 @@ try:
                 """)
                 
                 st.markdown("#### Input Features")
-                features = model_info.get('features', 'price', 'aisle_id', 'margin')
+                features = model_info.get('features',['price', 'aisle_id', 'margin'])
                 st.write(", ".join([f"`{f}`" for f in features]))
 
             with col_perf:
@@ -158,6 +158,7 @@ if st.button("Generate Strategy", type="primary") or "current_recs" in st.sessio
     display_group = data['experiment_group']
     
     st.write(f"User assigned to: **{display_group.replace('_', ' ').title()}**")
+    st.caption("Demo flow: view -> click -> cart_add -> purchase. These events feed A/B metrics and drift windows.")
     
     cols = st.columns(5)
     for i, item in enumerate(data['recommendations']):
@@ -166,16 +167,59 @@ if st.button("Generate Strategy", type="primary") or "current_recs" in st.sessio
                 st.write(f"**{item['product_name']}**")
                 st.write(f"Price: :green[${item['price']}]")
                 st.write(f"Score: `{item['score']}`")
-                if st.button("🛒 Simulate Sale", key=f"s_{item['product_id']}"):
+                if st.button("👀 View", key=f"v_{item['product_id']}"):
                     payload = {
                         "user_id": int(u_id), 
                         "product_id": int(item['product_id']), 
-                        "event_type": "purchase", 
+                        "event_type": "view", 
                         "experiment_group": display_group, 
-                        "revenue": float(item['price'])
+                        "revenue": 0.0,
+                        "margin": float(item['margin'])
                     }
                     authenticated_request("POST", "events", json=payload)
-                    st.toast(f"Event Captured! ${item['price']} attributed to {display_group}.")
+                    st.toast("View event captured.")
+
+                if st.button("🖱️ Click", key=f"c_{item['product_id']}"):
+                    payload = {
+                        "user_id": int(u_id),
+                        "product_id": int(item['product_id']),
+                        "event_type": "click",
+                        "experiment_group": display_group,
+                        "revenue": 0.0,
+                        "margin": float(item['margin'])
+                    }
+                    authenticated_request("POST", "events", json=payload)
+                    st.toast("Click event captured.")
+
+                if st.button("🧺 Add to Cart", key=f"a_{item['product_id']}"):
+                    payload = {
+                        "user_id": int(u_id),
+                        "product_id": int(item['product_id']),
+                        "event_type": "cart_add",
+                        "experiment_group": display_group,
+                        "revenue": 0.0,
+                        "margin": float(item['margin'])
+                    }
+                    authenticated_request("POST", "events", json=payload)
+                    st.toast("Cart event captured.")
+
+                if st.button("🛒 Purchase", key=f"p_{item['product_id']}"):
+                    payload = {
+                        "user_id": int(u_id),
+                        "product_id": int(item['product_id']),
+                        "event_type": "purchase",
+                        "experiment_group": display_group,
+                        "revenue": float(item['price']),
+                        "margin": float(item['margin'])
+                    }
+                    authenticated_request("POST", "events", json=payload)
+                    st.toast(f"Purchase captured. ${item['price']} attributed to {display_group}.")
+
+    if st.button("🔁 Refresh Recommendations from Latest Context"):
+        rec_res = authenticated_request("POST", f"recommendations?user_id={u_id}&top_k=5")
+        if rec_res.status_code == 200:
+            st.session_state.current_recs = rec_res.json()
+            st.success("Recommendations refreshed.")
 
 if st.button("Logout"):
     st.session_state.clear()

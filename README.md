@@ -1,121 +1,163 @@
-# Retail Optimization & Personalization Engine 🚀
+# Retail Optimization and Personalization Engine
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![ONNX](https://img.shields.io/badge/ONNX-005BEA?style=flat&logo=onnx&logoColor=white)](https://onnx.ai/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
-A production-grade, real-time retail recommendation and pricing optimization system built using the Instacart dataset. This system is designed for **low-latency (<150ms)**, **margin-aware ranking**, and **automated MLOps deployment**.
+Relevance-first recommendation system built on Instacart basket data, with live event feedback, experiment tracking, drift monitoring, and dynamic model loading.
 
----
+## 2-Minute Story
 
-## 🏗️ System Architecture
+1. Base behavior data comes from Instacart orders.
+2. A two-tower retriever creates a candidate set quickly.
+3. A feature-rich ML reranker scores candidates using user-product frequency, recency, reorder ratio, embedding similarity, and category affinity.
+4. Business signals (margin and inventory) are secondary boosts, not primary rank drivers.
+5. Streamlit dashboard logs view, click, cart_add, and purchase events.
+6. Those events feed A/B metrics and Evidently drift windows.
+7. MLflow tracks experiments and artifacts; promotion compares candidate vs current model before publishing metadata.
 
-The engine uses a multi-stage retrieval and ranking pipeline to balance user relevance with business profitability:
+## What Is Real vs Simulated
 
-1. **Candidate Retrieval:** A **Two-Tower Neural Network** maps users and 50,000+ products into a 64D embedding space.
-2. **Vector Search:** Employs **pgvector** with an **HNSW index** for sub-100ms similarity search.
-3. **Real-Time Inference:** User embeddings are generated via an optimized **ONNX** model.
-4. **Business-Aware Re-Ranking:** An **XGBoost** classifier scores candidates based on purchase probability, profit margins, and inventory pressure.
+- Real:
+	- Event logging pipeline (view/click/cart_add/purchase)
+	- Retrieval and reranking inference
+	- Redis caching for embeddings and assignment state
+	- API latency monitoring and model metadata loading
+	- Drift monitoring against recent event windows
+- Simulated:
+	- Margin/inventory business features and their scale
+	- Traffic scale and retraining trigger orchestration
+	- Some pricing/economic signals used for portfolio demonstration
 
----
+## Architecture
 
-## 📈 Performance Benchmarks
+```mermaid
+flowchart LR
+		U[Dashboard User] --> UI[Streamlit Dashboard]
+		UI --> API[FastAPI API]
 
-The system was optimized for high-throughput production environments. Transitioning the User Tower from PyTorch to quantized ONNX yielded significant efficiency gains:
+		API --> EMB[User Tower ONNX]
+		EMB --> RET[pgvector Retrieval]
+		RET --> RR[ML Reranker\nXGBoost rank:ndcg]
+		RR --> RES[Top-K Recommendations]
 
-| Metric | PyTorch (Baseline) | ONNX (Optimized) | Improvement |
-| :--- | :--- | :--- | :--- |
-| **Mean Latency** | 0.3340 ms | **0.0527 ms** | **6.34x Faster** |
-| **P99 Latency** |  1.8072 ms | **0.1043 ms** | **17.3x More Stable** |
-| **Model Size** | 62.61 MB | **12.61 MB** | **80% Smaller** |
+		UI --> EVT[Event API\nview/click/cart_add/purchase]
+		EVT --> DB[(Postgres)]
 
-**Numerical Parity:** The MAE between PyTorch and ONNX outputs is **6.87e-03**, ensuring zero degradation in recommendation quality.
+		RR --> REDIS[(Redis Cache)]
+		API --> META[Model Metadata]
 
----
+		DB --> AB[A/B Metrics]
+		DB --> DRIFT[Evidently Drift\ntraining vs recent events]
+		DRIFT --> UI
 
-## 🧠 Model Performance (Offline Evaluation)
+		TRAIN[Training + Offline Eval] --> MLF[MLflow Tracking]
+		MLF --> GATE[Promotion Gate\ncompare candidate vs current]
+		GATE --> META
+```
 
-Evaluated against the Instacart Market Basket dataset using hybrid heuristic baselines:
+## Ranking Approach
 
-- **Precision@10:** 0.1672
-- **Recall@10:** 0.1949
-- **NDCG@10:** 0.2372
+- Retrieval stage: Two-tower embeddings retrieve top-N nearest products.
+- Reranking stage: XGBoost ranker optimized with ranking objective (`rank:ndcg`) and grouped user lists.
+- Relevance features:
+	- user_product_frequency
+	- user_product_recency
+	- user_product_reorder_ratio
+	- embedding_similarity
+	- category_affinity
+- Business controls:
+	- margin and inventory are low-weight boosts.
+	- default group weights prioritize relevance:
+		- control: relevance 0.92, margin 0.05, inventory 0.03
+		- margin_boost: relevance 0.86, margin 0.10, inventory 0.04
 
----
+## Offline Credibility Metrics
 
-## 🛠️ Tech Stack
+Run staged offline evaluation:
 
-- **Backend:** FastAPI (Asynchronous), Uvicorn
-- **Database:** PostgreSQL (Neon) with `pgvector`
-- **Caching:** Redis (Session-based event storage and embedding cache)
-- **ML Frameworks:** PyTorch, XGBoost, ONNX Runtime
-- **DevOps:** Docker, Docker Compose, Alembic (Migrations)
-- **Frontend:** Streamlit (Intelligence Dashboard)
+```bash
+python training/offline_eval.py
+```
 
----
+Outputs three comparable blocks:
 
-## 🚀 Getting Started
+- retrieval_only
+- retrieval_plus_heuristic_rerank
+- retrieval_plus_ml_rerank
 
-### 1. Prerequisites
-- Docker & Docker Compose
-- Python 3.11+
-- A PostgreSQL (Neon) instance with `pgvector` enabled
+Metrics written to:
 
-### 2. Environment Setup
-Clone the repository and create a `.env` file based on the provided template:
+- mlops/reports/offline_ranking_metrics.json
+
+## Demo Flow
+
+1. Open dashboard.
+2. Generate recommendations for a user.
+3. Trigger product events in order: view -> click -> cart_add -> purchase.
+4. Refresh recommendations.
+5. Open experiment analytics for CTR, click-to-cart, and conversion.
+6. Run observability tab drift report.
+7. Verify live model version in model ops tab.
+
+## MLflow and Promotion
+
+Use MLflow for experiment tracking and artifact versioning:
+
+```bash
+python mlops/train_with_mlflow.py
+```
+
+Promotion gate (latency, parity, and not-worse-than-current) updates metadata consumed by the API:
+
+```bash
+python mlops/publish_model.py
+```
+
+## Tooling: One-Line Purpose
+
+- FastAPI: low-latency async inference and event APIs.
+- PostgreSQL + pgvector: vector retrieval and event persistence.
+- Redis: cache embeddings and stable A/B assignment.
+- XGBoost: fast interpretable reranking model.
+- ONNX Runtime: efficient serving for embedding/rerank models.
+- MLflow: experiment runs, metrics, and artifact lineage.
+- Evidently: drift reporting between training and live event windows.
+- Streamlit: demo/control UI for interactions and monitoring.
+
+## Quick Start
+
+1. Install dependencies.
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Configure environment.
 
 ```bash
 cp .env.example .env
-# Update DATABASE_URL and SECRET_KEY in .env
 ```
 
-### 3. Docker Deployment
-Run the entire stack (API + Redis) using Docker Compose:
+3. Start services.
 
 ```bash
 docker compose -f deployments/docker-compose.yml up --build
 ```
 
-The API will be available at `http://localhost:8000` and the Streamlit dashboard at `http://localhost:8501`.
+4. Open:
 
----
+- API docs: http://localhost:8000/docs
+- Dashboard: http://localhost:8501
 
-## 🔐 API Endpoints
+## Project Layout
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| POST | `/api/v1/auth/token` | Authenticate and receive JWT token |
-| POST | `/api/v1/recommendations` | Get personalized, margin-optimized suggestions |
-| POST | `/api/v1/pricing/optimize` | Calculate optimal price based on inventory pressure |
-| GET | `/api/v1/experiments/results` | View real-time A/B test performance (Revenue/CTR) |
-| GET | `/health` | System vitality and database connection status |
-
----
-
-## 🧪 A/B Testing & Business Logic
-
-The engine supports real-time experiment simulation. Users are randomly assigned to:
-
-- **Control Group:** Ranked by pure relevance (ML score).
-- **Margin Boost Group:** Ranked using a weighted formula:
-
-```
-Score = (0.6 * ML_Prob) + (0.3 * Norm_Margin) + (0.1 * Inventory_Pressure)
-```
-
----
-
-## 📂 Project Structure
-
-```plaintext
-├── src/
-│   ├── api/          # FastAPI routes and middleware
-│   ├── core/         # Config and Database connections
-│   ├── engine/       # Retrieval, Ranking, and Session logic
-│   └── frontend/     # Streamlit UI pages
-├── training/         # Model training and ONNX export scripts
-├── models/           # Exported ONNX and XGBoost artifacts
-├── deployments/      # Dockerfile and start scripts
-└── alembic/          # Database migration history
+```text
+src/api         FastAPI routes and middleware
+src/engine      Retrieval, reranking, session policy
+training        Retrieval/reranker training and offline eval
+mlops           Tracking, promotion, drift workflows
+models          ONNX, reranker bundles, metadata
+src/frontend    Streamlit dashboard and demo controls
 ```

@@ -32,6 +32,8 @@ async def get_experiment_performance():
                 COUNT(DISTINCT user_id) as unique_users,
                 COUNT(event_id) FILTER (WHERE event_type = 'click') as clicks,
                 COUNT(event_id) FILTER (WHERE event_type = 'view') as views,
+                COUNT(event_id) FILTER (WHERE event_type = 'cart_add') as cart_adds,
+                COUNT(event_id) FILTER (WHERE event_type = 'purchase') as purchases,
                 SUM(revenue) as total_revenue
             FROM experiment_events
             GROUP BY experiment_id
@@ -44,14 +46,19 @@ async def get_experiment_performance():
         for row in rows:
             # Avoid division by zero
             ctr = (row.clicks / row.views) if row.views and row.views > 0 else 0
+            click_to_cart = (row.cart_adds / row.clicks) if row.clicks and row.clicks > 0 else 0
+            purchase_rate = (row.purchases / row.views) if row.views and row.views > 0 else 0
             
             performance.append({
                 "group": row.group_name,
                 "metrics": {
                     "unique_users": row.unique_users,
                     "ctr_percent": round(ctr * 100, 2),
+                    "click_to_cart_percent": round(click_to_cart * 100, 2),
+                    "view_to_purchase_percent": round(purchase_rate * 100, 2),
+                    "purchases": row.purchases,
                     "total_revenue": round(float(row.total_revenue or 0), 2),
-                    "conversion_rate": round((row.clicks / row.unique_users), 4) if row.unique_users > 0 else 0
+                    "conversion_rate": round((row.purchases / row.unique_users), 4) if row.unique_users > 0 else 0
                 }
             })
             

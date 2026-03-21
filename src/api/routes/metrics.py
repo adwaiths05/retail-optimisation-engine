@@ -10,7 +10,7 @@ async def get_dynamic_metrics():
     start = time.perf_counter()
     try:
         redis_alive = await session_mgr.redis.ping()
-        redis_latency = (time.time() - start) * 1000
+        redis_latency = (time.perf_counter() - start) * 1000
     except Exception:
         redis_alive = False
         redis_latency = 0

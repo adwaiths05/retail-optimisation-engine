@@ -4,7 +4,7 @@ import os
 import datetime
 import json
 from training.benchmark import benchmark  # Existing benchmark script
-from mlops.model_registry import update_model_metadata
+from mlops.model_registry import update_model_metadata, get_current_metadata
 
 # CONFIGURATION
 # Tightened threshold to 1ms based on ONNX benchmarks (~0.05ms)
@@ -38,9 +38,19 @@ def publish_production_model():
     passed_latency = mean_latency < LATENCY_THRESHOLD_MS
     passed_accuracy = mae < MAE_THRESHOLD
 
-    if not (passed_latency and passed_accuracy):
+    current_meta = get_current_metadata()
+    current_perf = current_meta.get("performance", {})
+    previous_latency = current_perf.get("mean_latency_ms", 9999)
+    previous_mae = current_perf.get("mae_parity", 9999)
+    not_worse_than_current = (mean_latency <= previous_latency + 0.2) and (mae <= previous_mae + 0.002)
+
+    if not (passed_latency and passed_accuracy and not_worse_than_current):
         print("❌ PROMOTION REJECTED")
-        print(f"Reason: Latency ({mean_latency}ms) or MAE ({mae}) exceeded budget.")
+        print(
+            "Reason: candidate failed hard gate or underperformed current production "
+            f"(candidate latency={mean_latency:.4f} vs current={previous_latency:.4f}, "
+            f"candidate mae={mae:.6f} vs current={previous_mae:.6f})."
+        )
         sys.exit(1)
 
     # 4. Versioning & Archiving
@@ -62,7 +72,15 @@ def publish_production_model():
     update_model_metadata(
         version=version_tag, 
         metrics=results, 
-        model_path=PROD_MODEL
+        model_path=PROD_MODEL,
+        candidate_info={
+            "source_model": SOURCE_MODEL,
+            "passed_latency_gate": passed_latency,
+            "passed_parity_gate": passed_accuracy,
+            "outperformed_or_matched_current": not_worse_than_current,
+            "previous_mean_latency_ms": previous_latency,
+            "previous_mae": previous_mae,
+        },
     )
 
     print(f"🎉 SUCCESS: Model {version_tag} is now live!")

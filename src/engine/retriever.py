@@ -13,7 +13,7 @@ class Retriever:
         async with AsyncSessionLocal() as session:
             # We fetch a larger pool (top_k) to allow the Ranker to filter/re-order
             query = text("""
-                SELECT product_id, product_name, price, margin, stock,
+                SELECT product_id, product_name, price, margin, stock, aisle_id, department_id,
                        (embedding <=> :user_vec) as distance
                 FROM products
                 ORDER BY distance ASC
