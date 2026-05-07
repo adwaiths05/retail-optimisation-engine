@@ -15,7 +15,7 @@ router = APIRouter()
 class PredictionEngine:
     """
     Manages the ONNX inference session dynamically.
-    Instead of hardcoding the path, it consults the MLOps registry.
+    It loads the bundled production model path from settings.
     """
     _session = None
     _input_name = None

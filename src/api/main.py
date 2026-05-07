@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from src.api.routes import (
-    recommendations, events, pricing, models, 
-    experiments, metrics, auth_routes  # Added auth_routes
+    recommendations, events, pricing,
+    experiments, metrics, auth_routes
 )
 from src.api.middleware.logging import LatencyLoggingMiddleware
 from src.api.middleware.errors import GlobalExceptionHandlerMiddleware
@@ -53,7 +53,6 @@ app.include_router(events.router, prefix="/api/v1", dependencies=viewer_deps)
 
 # Restricted Access
 app.include_router(pricing.router, prefix="/api/v1/pricing", dependencies=admin_deps)
-app.include_router(models.router, prefix="/api/v1/models", dependencies=admin_deps)
 app.include_router(metrics.router, prefix="/api/v1/metrics", dependencies=admin_deps)
 
 if __name__ == "__main__":

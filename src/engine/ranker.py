@@ -9,27 +9,14 @@ class Ranker:
     def __init__(self, model_path: str, mappings_path: str):
         self.session = None
         self.input_name = None
-        self.pkl_model = None
         self.feature_columns: List[str] = []
+        self.feature_store = {}
 
         try:
             self.session = ort.InferenceSession(model_path)
             self.input_name = self.session.get_inputs()[0].name
         except Exception as exc:
             print(f"⚠️ ONNX ranker unavailable: {exc}")
-
-        try:
-            model_bundle = joblib.load("models/reranker_xgb.pkl")
-            self.pkl_model = model_bundle.get("model")
-            self.feature_columns = model_bundle.get("feature_columns", [])
-        except Exception as exc:
-            print(f"⚠️ PKL ranker unavailable: {exc}")
-
-        try:
-            self.feature_store = joblib.load("models/reranker_features.pkl")
-        except Exception as exc:
-            print(f"⚠️ Feature store unavailable: {exc}")
-            self.feature_store = {}
 
         try:
             self.mappings = joblib.load(mappings_path)
@@ -77,9 +64,6 @@ class Ranker:
             outputs = self.session.run(None, {self.input_name: feature_matrix})
             onnx_scores = outputs[-1]
             return np.array(onnx_scores, dtype=np.float32).reshape(-1)
-
-        if self.pkl_model is not None:
-            return np.array(self.pkl_model.predict(feature_matrix), dtype=np.float32).reshape(-1)
 
         return np.zeros(feature_matrix.shape[0], dtype=np.float32)
 

@@ -13,12 +13,7 @@ services:
     # environment: 
     #   - REDIS_URL will be pulled from your .env or Render secrets
     restart: unless-stopped
-    volumes:
-      - reports_data:/app/mlops/reports
 
 networks:
   default:
     name: retail_network
-
-volumes:
-  reports_data:

@@ -32,7 +32,6 @@
     
     # --- COPY ALL PROJECT DIRECTORIES ---
     COPY src/ ./src/
-    COPY mlops/ ./mlops/
     COPY db/ ./db/
     COPY alembic/ ./alembic/
     COPY alembic.ini .
@@ -41,7 +40,6 @@
     COPY models/user_tower_production.onnx ./models/
     COPY models/reranker.onnx ./models/ 
     COPY models/mappings.pkl ./models/
-    COPY models/metadata.json ./models/ 
     
     
     COPY deployments/start.sh ./deployments/
