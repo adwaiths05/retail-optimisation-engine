@@ -5,7 +5,7 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)](https://redis.io/)
 
-Relevance-first recommendation system built on Instacart basket data, with live event feedback, experiment tracking, drift monitoring, and dynamic model loading.
+Relevance-first recommendation system built on Instacart basket data, with live event feedback, static model serving, and a Streamlit demo UI.
 
 ## 2-Minute Story
 
@@ -14,8 +14,8 @@ Relevance-first recommendation system built on Instacart basket data, with live 
 3. A feature-rich ML reranker scores candidates using user-product frequency, recency, reorder ratio, embedding similarity, and category affinity.
 4. Business signals (margin and inventory) are secondary boosts, not primary rank drivers.
 5. Streamlit dashboard logs view, click, cart_add, and purchase events.
-6. Those events feed A/B metrics and Evidently drift windows.
-7. MLflow tracks experiments and artifacts; promotion compares candidate vs current model before publishing metadata.
+6. Those events feed A/B metrics.
+7. The backend serves bundled ONNX artifacts and a static recommendation stack.
 
 ## What Is Real vs Simulated
 
@@ -23,11 +23,11 @@ Relevance-first recommendation system built on Instacart basket data, with live 
 	- Event logging pipeline (view/click/cart_add/purchase)
 	- Retrieval and reranking inference
 	- Redis caching for embeddings and assignment state
-	- API latency monitoring and model metadata loading
-	- Drift monitoring against recent event windows
+	- API latency monitoring
+	- Static ONNX model loading
 - Simulated:
 	- Margin/inventory business features and their scale
-	- Traffic scale and retraining trigger orchestration
+	- Traffic scale assumptions
 	- Some pricing/economic signals used for portfolio demonstration
 
 ## Architecture
@@ -46,15 +46,11 @@ flowchart LR
 		EVT --> DB[(Postgres)]
 
 		RR --> REDIS[(Redis Cache)]
-		API --> META[Model Metadata]
 
 		DB --> AB[A/B Metrics]
-		DB --> DRIFT[Evidently Drift\ntraining vs recent events]
-		DRIFT --> UI
 
-		TRAIN[Training + Offline Eval] --> MLF[MLflow Tracking]
-		MLF --> GATE[Promotion Gate\ncompare candidate vs current]
-		GATE --> META
+		TRAIN[Training Scripts] --> MODELS[Bundled ONNX Artifacts]
+		MODELS --> API
 ```
 
 ## Ranking Approach
@@ -89,7 +85,7 @@ Outputs three comparable blocks:
 
 Metrics written to:
 
-- mlops/reports/offline_ranking_metrics.json
+- logs/offline_ranking_metrics.json
 
 ## Demo Flow
 
@@ -98,22 +94,18 @@ Metrics written to:
 3. Trigger product events in order: view -> click -> cart_add -> purchase.
 4. Refresh recommendations.
 5. Open experiment analytics for CTR, click-to-cart, and conversion.
-6. Run observability tab drift report.
-7. Verify live model version in model ops tab.
+6. Verify recommendation latency and event logging in the dashboard.
 
-## MLflow and Promotion
+## Deployment
 
-Use MLflow for experiment tracking and artifact versioning:
+The backend is deployed on Render, the database is Neon Postgres, and Redis is Upstash.
 
-```bash
-python mlops/train_with_mlflow.py
-```
+- Backend: Render
+- Database: Neon Postgres
+- Cache: Upstash Redis
+- Frontend: Streamlit Cloud
 
-Promotion gate (latency, parity, and not-worse-than-current) updates metadata consumed by the API:
-
-```bash
-python mlops/publish_model.py
-```
+The backend reads `DATABASE_URL` from Neon and `REDIS_URL` from Upstash directly through environment variables.
 
 ## Tooling: One-Line Purpose
 
@@ -122,8 +114,6 @@ python mlops/publish_model.py
 - Redis: cache embeddings and stable A/B assignment.
 - XGBoost: fast interpretable reranking model.
 - ONNX Runtime: efficient serving for embedding/rerank models.
-- MLflow: experiment runs, metrics, and artifact lineage.
-- Evidently: drift reporting between training and live event windows.
 - Streamlit: demo/control UI for interactions and monitoring.
 
 ## Quick Start
@@ -139,6 +129,12 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
+
+Set these values before starting the backend:
+
+- `DATABASE_URL` for Neon
+- `REDIS_URL` for Upstash
+- `SECRET_KEY` for JWT auth
 
 3. Start services.
 
@@ -156,8 +152,7 @@ docker compose -f deployments/docker-compose.yml up --build
 ```text
 src/api         FastAPI routes and middleware
 src/engine      Retrieval, reranking, session policy
-training        Retrieval/reranker training and offline eval
-mlops           Tracking, promotion, drift workflows
-models          ONNX, reranker bundles, metadata
+training        Retrieval/reranker training and offline eval scripts
+models          ONNX, reranker bundles, static artifacts
 src/frontend    Streamlit dashboard and demo controls
 ```
